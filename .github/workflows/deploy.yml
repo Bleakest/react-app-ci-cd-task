@@ -1,0 +1,55 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Build Docker image
+      run: |
+        docker build -t react-app:${{ github.sha }} .
+        docker save react-app:${{ github.sha }} > react-app.tar
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: react-app
+        path: react-app.tar
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: react-app
+
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/private_key
+        chmod 600 ~/.ssh/private_key
+        ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+    - name: Copy files to server
+      run: |
+        scp -i ~/.ssh/private_key react-app.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/tmp/react-app.tar
+        scp -i ~/.ssh/private_key docker-compose.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/app/react-app/docker-compose.yml
+
+    - name: Deploy on server
+      run: |
+        ssh -i ~/.ssh/private_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "
+          docker load -i /tmp/react-app.tar &&
+          cd /app/react-app &&
+          docker-compose down &&
+          docker-compose up -d
+        "
