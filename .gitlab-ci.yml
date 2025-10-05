@@ -13,15 +13,15 @@ test_connection:
     - apk update && apk add openssh-client
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/private_key
+    - cp $SSH_PRIVATE_KEY ~/.ssh/private_key  # ← ИСПРАВЛЕНО НА cp
     - chmod 600 ~/.ssh/private_key
     - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
   script:
     - echo "Тестируем SSH подключение..."
-    - ssh -o ConnectTimeout=10 -i ~/.ssh/private_key $SERVER_USER@$SERVER_IP "echo 'SSH подключение работает!'"
+    - ssh -o ConnectTimeout=10 $SERVER_USER@$SERVER_IP "echo 'SSH подключение работает!'"
     - echo "Тестируем SCP..."
     - echo "test file" > test.txt
-    - scp -o ConnectTimeout=10 -i ~/.ssh/private_key test.txt $SERVER_USER@$SERVER_IP:/tmp/test.txt
+    - scp -o ConnectTimeout=10 test.txt $SERVER_USER@$SERVER_IP:/tmp/test.txt
     - echo "SCP работает!"
   only:
     - master
@@ -49,13 +49,13 @@ deploy:
     - apk update && apk add openssh-client
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/private_key
+    - cp $SSH_PRIVATE_KEY ~/.ssh/private_key  # ← ИСПРАВЛЕНО НА cp
     - chmod 600 ~/.ssh/private_key
     - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
   script:
-    - scp -i ~/.ssh/private_key react-app.tar $SERVER_USER@$SERVER_IP:/tmp/react-app.tar
-    - scp -i ~/.ssh/private_key docker-compose.yml $SERVER_USER@$SERVER_IP:/app/react-app/docker-compose.yml
-    - ssh -i ~/.ssh/private_key $SERVER_USER@$SERVER_IP "
+    - scp react-app.tar $SERVER_USER@$SERVER_IP:/tmp/react-app.tar
+    - scp docker-compose.yml $SERVER_USER@$SERVER_IP:/app/react-app/docker-compose.yml
+    - ssh $SERVER_USER@$SERVER_IP "
         docker load -i /tmp/react-app.tar &&
         cd /app/react-app &&
         docker-compose down &&
