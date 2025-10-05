@@ -1,52 +1,12 @@
 stages:
   - test
   - build
-    - deploy
+  - deploy
 
 variables:
   DOCKER_IMAGE: react-app:$CI_COMMIT_SHORT_SHA
 
-  # build:
-  #   stage: build
-  #   image: docker:latest # ← ИСПРАВЛЕНИЕ: используем образ с Docker
-  #   services:
-  #     - docker:dind # ← Docker-in-Docker для сборки
-  #   before_script:
-  #     - apk add --no-cache docker-cli # ← Убедимся, что docker-cli установлен
-  #   script:
-  #     - docker build -t $DOCKER_IMAGE .
-  #     - docker save $DOCKER_IMAGE > react-app.tar
-  #   artifacts:
-  #     paths:
-  #       - react-app.tar
-  #   only:
-  #     - master
-
-  # deploy:
-  #   stage: deploy
-  #   image: alpine:latest # ← Лёгкий образ для деплоя
-  #   before_script:
-  #     - apk update && apk add openssh-client # ← Установка SSH в Alpine
-  #     - eval $(ssh-agent -s)
-  #     - mkdir -p ~/.ssh
-  #     - chmod 700 ~/.ssh
-  #     - echo "$SSH_PRIVATE_KEY" > ~/.ssh/private_key
-  #     - chmod 600 ~/.ssh/private_key
-  #     - ssh-add ~/.ssh/private_key
-  #     - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
-  #   script:
-  #     - scp react-app.tar $SERVER_USER@$SERVER_IP:/tmp/react-app.tar
-  #     - scp docker-compose.yml $SERVER_USER@$SERVER_IP:/app/react-app/docker-compose.yml
-  #     - ssh $SERVER_USER@$SERVER_IP "
-  #       docker load -i /tmp/react-app.tar &&
-  #       cd /app/react-app &&
-  #       docker-compose down &&
-  #       docker-compose up -d
-  #       "
-  #   only:
-  #     - master
-
-  test_connection:
+test_connection:
   stage: test
   image: alpine:latest
   before_script:
@@ -63,5 +23,43 @@ variables:
     - echo "test file" > test.txt
     - scp -o ConnectTimeout=10 -i ~/.ssh/private_key test.txt $SERVER_USER@$SERVER_IP:/tmp/test.txt
     - echo "SCP работает!"
+  only:
+    - master
+
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - apk add --no-cache docker-cli
+  script:
+    - docker build -t $DOCKER_IMAGE .
+    - docker save $DOCKER_IMAGE > react-app.tar
+  artifacts:
+    paths:
+      - react-app.tar
+  only:
+    - master
+
+deploy:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk update && apk add openssh-client
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/private_key
+    - chmod 600 ~/.ssh/private_key
+    - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+  script:
+    - scp -i ~/.ssh/private_key react-app.tar $SERVER_USER@$SERVER_IP:/tmp/react-app.tar
+    - scp -i ~/.ssh/private_key docker-compose.yml $SERVER_USER@$SERVER_IP:/app/react-app/docker-compose.yml
+    - ssh -i ~/.ssh/private_key $SERVER_USER@$SERVER_IP "
+        docker load -i /tmp/react-app.tar &&
+        cd /app/react-app &&
+        docker-compose down &&
+        docker-compose up -d
+      "
   only:
     - master
