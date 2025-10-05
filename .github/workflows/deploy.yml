@@ -10,7 +10,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4  # ← ОБНОВЛЕНО
 
     - name: Build Docker image
       run: |
@@ -18,7 +18,7 @@ jobs:
         docker save react-app:${{ github.sha }} > react-app.tar
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4  # ← ОБНОВЛЕНО
       with:
         name: react-app
         path: react-app.tar
@@ -29,7 +29,7 @@ jobs:
     
     steps:
     - name: Download artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4  # ← ОБНОВЛЕНО
       with:
         name: react-app
 
