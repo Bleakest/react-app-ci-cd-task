@@ -10,12 +10,13 @@ test_connection:
   stage: test
   image: alpine:latest
   before_script:
-    - apk update && apk add openssh-client
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
-    - cp $SSH_PRIVATE_KEY ~/.ssh/private_key  # ← ИСПРАВЛЕНО НА cp
-    - chmod 600 ~/.ssh/private_key
     - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+
   script:
     - echo "Тестируем SSH подключение..."
     - ssh -o ConnectTimeout=10 $SERVER_USER@$SERVER_IP "echo 'SSH подключение работает!'"
@@ -46,20 +47,21 @@ deploy:
   stage: deploy
   image: alpine:latest
   before_script:
-    - apk update && apk add openssh-client
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - cp $SSH_PRIVATE_KEY ~/.ssh/private_key  # ← ИСПРАВЛЕНО НА cp
-    - chmod 600 ~/.ssh/private_key
-    - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+  - apk add --no-cache openssh-client
+  - eval $(ssh-agent -s)
+  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+
   script:
     - scp react-app.tar $SERVER_USER@$SERVER_IP:/tmp/react-app.tar
     - scp docker-compose.yml $SERVER_USER@$SERVER_IP:/app/react-app/docker-compose.yml
     - ssh $SERVER_USER@$SERVER_IP "
-        docker load -i /tmp/react-app.tar &&
-        cd /app/react-app &&
-        docker-compose down &&
-        docker-compose up -d
+      docker load -i /tmp/react-app.tar &&
+      cd /app/react-app &&
+      docker-compose down &&
+      docker-compose up -d
       "
   only:
     - master
