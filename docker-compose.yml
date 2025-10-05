@@ -1,0 +1,16 @@
+services:
+  react-app:
+    image: react-app:${TAG:-latest}
+    container_name: react-app
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.react-app.rule=Host(`dmitry-kolesnikov.result-student.tw1.ru`)"
+      - "traefik.http.routers.react-app.entrypoints=websecure"
+      - "traefik.http.routers.react-app.tls.certresolver=myresolver"
+    networks:
+      - web
+
+networks:
+  web:
+    external: true
