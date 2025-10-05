@@ -5,7 +5,7 @@ import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
-  console.log('App rendered 4');
+  console.log('App rendered 5');
   
 
   return (
