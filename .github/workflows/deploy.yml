@@ -10,15 +10,15 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4  # ← ОБНОВЛЕНО
+      uses: actions/checkout@v4
 
     - name: Build Docker image
       run: |
-        docker build -t react-app:${{ github.sha }} .
-        docker save react-app:${{ github.sha }} > react-app.tar
+        docker build -t react-app:latest .
+        docker save react-app:latest > react-app.tar
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v4  # ← ОБНОВЛЕНО
+      uses: actions/upload-artifact@v4
       with:
         name: react-app
         path: react-app.tar
@@ -29,7 +29,7 @@ jobs:
     
     steps:
     - name: Download artifact
-      uses: actions/download-artifact@v4  # ← ОБНОВЛЕНО
+      uses: actions/download-artifact@v4
       with:
         name: react-app
 
@@ -40,16 +40,20 @@ jobs:
         chmod 600 ~/.ssh/private_key
         ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
+    - name: Create project directory
+      run: |
+        ssh -i ~/.ssh/private_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "mkdir -p /root/react-app"
+
     - name: Copy files to server
       run: |
         scp -i ~/.ssh/private_key react-app.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/tmp/react-app.tar
-        scp -i ~/.ssh/private_key docker-compose.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/app/react-app/docker-compose.yml
+        scp -i ~/.ssh/private_key docker-compose.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/root/react-app/docker-compose.yml
 
     - name: Deploy on server
       run: |
         ssh -i ~/.ssh/private_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "
           docker load -i /tmp/react-app.tar &&
-          cd /app/react-app &&
+          cd /root/react-app &&
           docker-compose down &&
           docker-compose up -d
         "
